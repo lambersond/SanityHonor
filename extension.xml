@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<!-- 
+  Please see the license.html file included with this distribution for 
+  attribution and copyright information.
+-->
+
+<root version="3.0" release="8" logo="logo.png">
+	<announcement text="5E Sanity and Honor for Fantasy Grounds\rModified by Dailies and Dungeons\rCopyright 2015 Smiteworks USA, LLC" font="emotefont" icon="DDlogo_5E" />
+
+	<!-- Attributes -->
+	<properties>
+		<name>5E Ext - Sanity and Honor</name>
+		<version>1.1</version>
+		<description>Adds Sanity and Honor ability - 11 August 2018</description>
+	
+	<ruleset>
+		<name>5E</name>
+	</ruleset>
+	
+	</properties>
+
+	<base>
+	<!-- Layers -->
+	<importruleset source="CoreRPG" />
+	
+	<!-- Strings -->
+	<includefile source="strings/strings_5e.xml" />
+
+	<!-- Desktop -->
+	<script name="Desktop5E" file="scripts/data_desktop_5E.lua" />
+	<script name="LibraryData5E" file="scripts/data_library_5E.lua" />
+	<script name="Options5E" file="scripts/data_options_5E.lua" />
+	<includefile source="desktop/desktop_local.xml" />
+	
+	<!-- Campaign Records -->
+	<includefile source="campaign/template_power.xml" />
+	<includefile source="campaign/template_char.xml" />
+	<includefile source="campaign/record_char_main.xml" />
+	<script name="CharManager" file="campaign/scripts/manager_char.lua" />
+	<includefile source="campaign/record_npc.xml" />
+	
+	<!-- Combat tracker -->
+	<includefile source="ct/template_ct.xml" />
+	<includefile source="ct/ct_host.xml" />
+	<includefile source="ct/ct_client.xml" />
+	
+	<!-- Party sheet -->
+	<includefile source="ps/template_ps.xml" />
+	<includefile source="ps/ps.xml" />
+	<includefile source="ps/ps_main.xml" />
+	<includefile source="ps/ps_xp.xml" />
+	<script name="PartyManager2" file="ps/scripts/manager_ps2.lua" />
+
+	<!-- High-level scripts -->
+	<script name="DataCommon" file="scripts/data_common.lua" />
+	<script name="GameSystem" file="scripts/manager_gamesystem.lua" />
+	<script name="CampaignDataManager2" file="scripts/manager_campaigndata2.lua" />
+	<script name="DataSpell" file="scripts/data_spell.lua" />
+	<script name="CharacterListManager_Inspiration" file="scripts/manager_charlist_inspiration.lua" />
+	<script name="ActorManager2" file="scripts/manager_actor2.lua" />
+	<script name="CombatManager2" file="scripts/manager_combat2.lua" />
+	<script name="EffectManager5E" file="scripts/manager_effect_5E.lua" />
+	<script name="ItemManager2" file="scripts/manager_item2.lua" />
+	<script name="PowerManager" file="scripts/manager_power.lua" />
+	<script name="TokenManager2" file="scripts/manager_token2.lua" />
+	<script name="VersionManager2" file="scripts/manager_version2.lua" />
+	<script name="ActionsManager2" file="scripts/manager_actions2.lua" />
+	<script name="ActionGeneral" file="scripts/manager_action_general.lua" />
+	<script name="ActionAttack" file="scripts/manager_action_attack.lua" />
+	<script name="ActionCheck" file="scripts/manager_action_check.lua" />
+	<script name="ActionDamage" file="scripts/manager_action_damage.lua" />
+	<script name="ActionHeal" file="scripts/manager_action_heal.lua" />
+	<script name="ActionInit" file="scripts/manager_action_init.lua" />
+	<script name="ActionPower" file="scripts/manager_action_power.lua" />
+	<script name="ActionRecharge" file="scripts/manager_action_recharge.lua" />
+	<script name="ActionRecovery" file="scripts/manager_action_recovery.lua" />
+	<script name="ActionSave" file="scripts/manager_action_save.lua" />
+	<script name="ActionSkill" file="scripts/manager_action_skill.lua" />
+	
+	<!-- icon -->
+	<icon name="DDlogo_5E" file="graphics/icons/DD_5E.png" />
+	
+	</base>
+</root>
