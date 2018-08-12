@@ -1,7 +1,7 @@
 -- 
 -- Please see the license.html file included with this distribution for 
 -- attribution and copyright information.
---
+-- lines added/modified: 179,180,227-230
 
 function onInit()
 	-- Set the displays to what should be shown
@@ -16,8 +16,6 @@ function onInit()
 	
 	-- Set up the PC links
 	onLinkChanged();
-	
-	-- Update the displays
 	onFactionChanged();
 	onHealthChanged();
 	
@@ -31,6 +29,7 @@ function updateDisplay()
 
 	if DB.getValue(getDatabaseNode(), "active", 0) == 1 then
 		name.setFont("sheetlabel");
+		nonid_name.setFont("sheetlabel");
 		
 		active_spacer_top.setVisible(true);
 		active_spacer_bottom.setVisible(true);
@@ -46,6 +45,7 @@ function updateDisplay()
 		end
 	else
 		name.setFont("sheettext");
+		nonid_name.setFont("sheettext");
 		
 		active_spacer_top.setVisible(false);
 		active_spacer_bottom.setVisible(false);
@@ -108,6 +108,7 @@ function onLinkChanged()
 		linkPCFields();
 		name.setLine(false);
 	end
+	onIDChanged();
 end
 
 function onHealthChanged()
@@ -119,6 +120,21 @@ function onHealthChanged()
 	local sClass,_ = link.getValue();
 	if sClass ~= "charsheet" then
 		idelete.setVisibility((nPercentWounded >= 1));
+	end
+end
+
+function onIDChanged()
+	local nodeRecord = getDatabaseNode();
+	local sClass = DB.getValue(nodeRecord, "link", "", "");
+	if sClass == "npc" then
+		local bID = LibraryData.getIDState("npc", nodeRecord, true);
+		name.setVisible(bID);
+		nonid_name.setVisible(not bID);
+		isidentified.setVisible(true);
+	else
+		name.setVisible(true);
+		nonid_name.setVisible(false);
+		isidentified.setVisible(false);
 	end
 end
 
@@ -294,6 +310,7 @@ function setActiveVisible()
 	end
 
 	if bNPC and spells.getWindowCount() > 0 then
+		spellslots.setVisible(v);
 		spells.setVisible(v);
 		spells_label.setVisible(v);
 	else
@@ -318,6 +335,8 @@ function setSpacingVisible(v)
 	spacelabel.setVisible(v);
 	reach.setVisible(v);
 	reachlabel.setVisible(v);
+	
+	spacer_space.setVisible(v);
 	
 	frame_spacing.setVisible(v);
 end
