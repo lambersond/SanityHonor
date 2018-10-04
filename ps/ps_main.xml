@@ -37,7 +37,7 @@
 				<center />
 			</label_ps>		
 			<label_ps name="abilitieslabel">
-				<anchored to="headeranchor" position="insidetopleft" offset="279,0" width="190" />
+				<anchored to="headeranchor" position="insidetopleft" offset="279,0" width="210" />
 				<static textres="ps_label_abilities" />
 				<center />
 			</label_ps>
@@ -77,7 +77,7 @@
 				<center />
 			</label_ps>
 			<label_ps name="honlabel">
-				<anchored to="chalabel" position="righthigh" offset="8,0" width="25" />
+				<anchored to="sanlabel" position="righthigh" offset="8,0" width="25" />
 				<static textres="hon" />
 				<center />
 			</label_ps>
@@ -362,7 +362,7 @@
 				<anchored to="charisma" />
 			</number_ps_ability>		
 			<number_ps_ability name="honor">
-				<anchored to="charisma" />
+				<anchored to="sanity" />
 			</number_ps_ability>		
 			<number_ps_abilitybonus name="strbonus">
 				<anchored to="strength" />
@@ -398,8 +398,8 @@
 			</number_ps_abilitybonus>	
 			
 			<number_ps_defense name="ac">
-				<anchored to="charisma">
-					<left offset="60" />
+				<anchored to="honor">
+					<left offset="15" />
 				</anchored>
 			</number_ps_defense>				
 			<number_ps_senses name="perception">
