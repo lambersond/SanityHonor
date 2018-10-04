@@ -31,12 +31,22 @@ function updateControl(sControl, bReadOnly, bForceHide)
 	if not self[sControl] then
 		return false;
 	end
-	
+		
 	return self[sControl].update(bReadOnly, bForceHide);
 end
 
 function update()
-	local bReadOnly = WindowManager.getReadOnlyState(getDatabaseNode());
+	local nodeRecord = getDatabaseNode();
+	local bReadOnly = WindowManager.getReadOnlyState(nodeRecord);
+	local bID = LibraryData.getIDState("npc", nodeRecord);
+
+	local bSection1 = false;
+	if User.isHost() then
+		if updateControl("nonid_name", bReadOnly) then bSection1 = true; end;
+	else
+		updateControl("nonid_name", bReadOnly, true);
+	end
+	divider.setVisible(bSection1);
 
 	updateControl("size", bReadOnly, bReadOnly);
 	updateControl("type", bReadOnly, bReadOnly);
@@ -286,6 +296,9 @@ function addSpellDrop(nodeSource, bInnate)
 end
 
 function onDrop(x, y, draginfo)
+	if WindowManager.getReadOnlyState(getDatabaseNode()) then
+		return true;
+	end
 	if draginfo.isType("shortcut") then
 		local sClass = draginfo.getShortcutData();
 		local nodeSource = draginfo.getDatabaseNode();

@@ -11,6 +11,7 @@ CLASS_MONK = "monk";
 CLASS_SORCERER = "sorcerer";
 
 TRAIT_DWARVEN_TOUGHNESS = "dwarven toughness";
+TRAIT_GNOME_CUNNING = "gnome cunning";
 TRAIT_POWERFUL_BUILD = "powerful build";
 TRAIT_NATURAL_ARMOR = "natural armor";
 TRAIT_CATS_CLAWS = "cat's claws";
@@ -21,6 +22,9 @@ FEATURE_PACT_MAGIC = "pact magic";
 FEATURE_SPELLCASTING = "spellcasting";
 FEATURE_ELDRITCH_INVOCATIONS = "eldritch invocations";
 
+FEAT_DRAGON_HIDE = "dragon hide";
+FEAT_DURABLE = "durable";
+FEAT_MEDIUM_ARMOR_MASTER = "medium armor master";
 FEAT_TOUGH = "tough";
 FEAT_WAR_CASTER = "war caster";
 
@@ -28,6 +32,12 @@ function onInit()
 	ItemManager.setCustomCharAdd(onCharItemAdd);
 	ItemManager.setCustomCharRemove(onCharItemDelete);
 	initWeaponIDTracking();
+end
+
+function outputUserMessage(sResource, ...)
+	local sFormat = Interface.getString(sResource);
+	local sMsg = string.format(sFormat, ...);
+	ChatManager.SystemMessage(sMsg);
 end
 
 --
@@ -198,7 +208,11 @@ function addToArmorDB(nodeItem)
 	end
 	if hasTrait(nodeChar, TRAIT_NATURAL_ARMOR) then
 		bArmorAllowed = false;
-		bShieldAllowed = false;
+		bShieldAllowed = true;
+	end
+	if hasFeat(nodeChar, FEAT_DRAGON_HIDE) then
+		bArmorAllowed = false;
+		bShieldAllowed = true;
 	end
 	if (bArmorAllowed and not bIsShield) or (bShieldAllowed and bIsShield) then
 		local bArmorEquipped = false;
@@ -225,10 +239,35 @@ end
 
 function calcItemArmorClass(nodeChar)
 	local nMainArmorTotal = 0;
+	local nNaturalArmorTotal = 0;
 	local nMainShieldTotal = 0;
 	local sMainDexBonus = "";
 	local nMainStealthDis = 0;
 	local nMainStrRequired = 0;
+
+	local nodeNaturalArmor = getTraitRecord(nodeChar, TRAIT_NATURAL_ARMOR);
+	if nodeNaturalArmor then
+		local sNaturalArmorDesc = DB.getText(nodeNaturalArmor, "text", ""):lower();
+		if sNaturalArmorDesc:match("your dexterity modifier doesn't affect this number") then
+			sMainDexBonus = "no";
+		end
+		local sNaturalArmorTotal = sNaturalArmorDesc:match("your ac is (%d+)");
+		if not sNaturalArmorTotal then
+			sNaturalArmorTotal = sNaturalArmorDesc:match("base ac of (%d+)");
+		end
+		if sNaturalArmorTotal then
+			nNaturalArmorTotal = (tonumber(sNaturalArmorTotal) or 10) - 10;
+		end
+	end
+	local nodeDragonHide = getFeatRecord(nodeChar, FEAT_DRAGON_HIDE);
+	if nodeDragonHide then
+		local sNaturalArmorDesc = DB.getText(nodeDragonHide, "text", ""):lower();
+		local sNaturalArmorTotal = sNaturalArmorDesc:match("your ac as (%d+)");
+		if sNaturalArmorTotal then
+			local nNewNaturalArmorTotal = (tonumber(sNaturalArmorTotal) or 10) - 10;
+			nNaturalArmorTotal = math.max(nNaturalArmorTotal, nNewNaturalArmorTotal);
+		end
+	end
 
 	for _,vNode in pairs(DB.getChildren(nodeChar, "inventorylist")) do
 		if DB.getValue(vNode, "carried", 0) == 2 then
@@ -244,31 +283,55 @@ function calcItemArmorClass(nodeChar)
 						nMainShieldTotal = nMainShieldTotal + DB.getValue(vNode, "ac", 0);
 					end
 				else
+					local bLightArmor = false;
+					local bMediumArmor = false;
+					local bHeavyArmor = false;
+					local sSubType = DB.getValue(vNode, "subtype", "");
+					if sSubType:lower():match("^heavy") then
+						bHeavyArmor = true;
+					elseif sSubType:lower():match("^medium") then
+						bMediumArmor = true;
+					else
+						bLightArmor = true;
+					end
+					
 					if bID then
 						nMainArmorTotal = nMainArmorTotal + (DB.getValue(vNode, "ac", 0) - 10) + DB.getValue(vNode, "bonus", 0);
 					else
 						nMainArmorTotal = nMainArmorTotal + (DB.getValue(vNode, "ac", 0) - 10);
 					end
 					
-					local sItemDexBonus = DB.getValue(vNode, "dexbonus", ""):lower();
-					if sItemDexBonus:match("yes") then
-						local nMaxBonus = tonumber(sItemDexBonus:match("max (%d)")) or 0;
-						if nMaxBonus == 2 then
-							if sMainDexBonus == "" or sMainDexBonus == "max3" then
-								sMainDexBonus = "max2";
+					if sMainDexBonus ~= "no" then
+						local sItemDexBonus = DB.getValue(vNode, "dexbonus", ""):lower();
+						if sItemDexBonus:match("yes") then
+							local nMaxBonus = tonumber(sItemDexBonus:match("max (%d)")) or 0;
+							if nMaxBonus == 2 then
+								if hasFeat(nodeChar, FEAT_MEDIUM_ARMOR_MASTER) and bMediumArmor then
+									if sMainDexBonus == "" then
+										sMainDexBonus = "max3";
+									end
+								else
+									if sMainDexBonus == "" or sMainDexBonus == "max3" then
+										sMainDexBonus = "max2";
+									end
+								end
+							elseif nMaxBonus == 3 then
+								if sMainDexBonus == "" then
+									sMainDexBonus = "max3";
+								end
 							end
-						elseif nMaxBonus == 3 then
-							if sMainDexBonus == "" then
-								sMainDexBonus = "max3";
-							end
+						else
+							sMainDexBonus = "no";
 						end
-					else
-						sMainDexBonus = "no";
 					end
 					
 					local sItemStealth = DB.getValue(vNode, "stealth", ""):lower();
 					if sItemStealth == "disadvantage" then
-						nMainStealthDis = 1;
+						if hasFeat(nodeChar, FEAT_MEDIUM_ARMOR_MASTER) and bMediumArmor then
+							-- NOTE: Do not apply stealth disadvantage from armor in this case
+						else
+							nMainStealthDis = 1;
+						end
 					end
 					
 					local sItemStrength = StringManager.trim(DB.getValue(vNode, "strength", "")):lower();
@@ -281,9 +344,8 @@ function calcItemArmorClass(nodeChar)
 		end
 	end
 	
-	if (nMainArmorTotal == 0) and (nMainShieldTotal == 0) and hasTrait(nodeChar, TRAIT_NATURAL_ARMOR) then
-		nMainArmorTotal = 3;
-	end
+	nMainArmorTotal = math.max(nMainArmorTotal, nNaturalArmorTotal);
+	
 	DB.setValue(nodeChar, "defenses.ac.armor", "number", nMainArmorTotal);
 	DB.setValue(nodeChar, "defenses.ac.shield", "number", nMainShieldTotal);
 	DB.setValue(nodeChar, "defenses.ac.dexbonus", "string", sMainDexBonus);
@@ -353,7 +415,8 @@ function addToWeaponDB(nodeItem)
 	end
 
 	-- Handle special weapon properties
-	local aWeaponProps = StringManager.split(DB.getValue(nodeItem, "properties", ""):lower(), ",", true);
+	local sProps = DB.getValue(nodeItem, "properties", "");
+	local aWeaponProps = StringManager.split(sProps:lower(), ",", true);
 	
 	local bThrown = false;
 	local bMissile = false;
@@ -534,16 +597,7 @@ function addToWeaponDB(nodeItem)
 end
 
 function initWeaponIDTracking()
-	OptionsManager.registerCallback("MIID", onIDOptionChanged);
 	DB.addHandler("charsheet.*.inventorylist.*.isidentified", "onUpdate", onItemIDChanged);
-end
-
-function onIDOptionChanged()
-	for _,vChar in pairs(DB.getChildren("charsheet")) do
-		for _,vWeapon in pairs(DB.getChildren(vChar, "weaponlist")) do
-			checkWeaponIDChange(vWeapon);
-		end
-	end
 end
 
 function onItemIDChanged(nodeItemID)
@@ -760,7 +814,7 @@ function resolveRefNode(sRecord)
 		local sRecordSansModule = StringManager.split(sRecord, "@")[1];
 		nodeSource = DB.findNode(sRecordSansModule .. "@*");
 		if not nodeSource then
-			ChatManager.SystemMessage(Interface.getString("char_error_missingrecord"));
+			outputUserMessage("char_error_missingrecord");
 		end
 	end
 	return nodeSource;
@@ -791,10 +845,7 @@ function addClassProficiencyDB(nodeChar, sClass, sRecord)
 			local sProfLower = StringManager.trim(sProf:lower());
 			if StringManager.contains(DataCommon.abilities, sProfLower) then
 				DB.setValue(nodeChar, "abilities." .. sProfLower .. ".saveprof", "number", 1);
-				
-				local sFormat = Interface.getString("char_abilities_message_saveadd");
-				local sMsg = string.format(sFormat, sProf, DB.getValue(nodeChar, "name", ""));
-				ChatManager.SystemMessage(sMsg);
+				outputUserMessage("char_abilities_message_saveadd", sProf, DB.getValue(nodeChar, "name", ""));
 			end
 		end
 
@@ -809,10 +860,6 @@ function addClassProficiencyDB(nodeChar, sClass, sRecord)
 		if sText:match("Choose any ") then
 			sPicks = sText:match("Choose any (%w+)");
 			
-			for k,_ in pairs(DataCommon.skilldata) do
-				table.insert(aSkills, k);
-			end
-			
 		elseif sText:match("Choose ") then
 			sPicks = sText:match("Choose (%w+) ");
 			
@@ -821,25 +868,16 @@ function addClassProficiencyDB(nodeChar, sClass, sRecord)
 			sText = sText:gsub("and ", "");
 			sText = sText:gsub("or ", "");
 			
-			for sSkill in string.gmatch(sText, "(%a[%a%s]+)%,?") do
+			for sSkill in sText:gmatch("(%a[%a%s]+)%,?") do
 				local sTrim = StringManager.trim(sSkill);
 				table.insert(aSkills, sTrim);
 			end
 		end
 		
-		local nPicks = 0;
-		if sPicks == "one" then
-			nPicks = 1;
-		elseif sPicks == "two" then
-			nPicks = 2;
-		elseif sPicks == "three" then
-			nPicks = 3;
-		elseif sPicks == "four" then
-			nPicks = 4;
-		end
+		local nPicks = convertSingleNumberTextToNumber(sPicks);
 		
-		if nPicks == 0 or #aSkills == 0 then
-			ChatManager.SystemMessage(Interface.getString("char_error_addskill"));
+		if nPicks == 0 then
+			outputUserMessage("char_error_addskill");
 			return nil;
 		end
 		
@@ -847,12 +885,56 @@ function addClassProficiencyDB(nodeChar, sClass, sRecord)
 	end
 end
 
-function onRaceAbilitySelect(aSelection, nodeChar)
+function onAbilitySelectDialog(nodeChar, aAbilities, nPicks, nAbilityMax, bSaveProfAdd)
+	-- Check for empty or missing ability list, then use full list
+	if not aAbilities then 
+		aAbilities = {}; 
+	end
+	if #aAbilities == 0 then
+		for _,v in ipairs(DataCommon.abilities) do
+			table.insert(aAbilities, StringManager.capitalize(v));
+		end
+	end
+	
+	-- Build the ability select choice dialog
+	local rAbilityAdd = { nodeChar = nodeChar, nAbilityMax = nAbilityMax, bSaveProfAdd = bSaveProfAdd };
+	local wSelect = Interface.openWindow("select_dialog", "");
+	local sTitle = Interface.getString("char_build_title_selectabilityincrease");
+	local sMessage;
+	if nPicks == 1 then
+		sMessage = string.format(Interface.getString("char_build_message_selectabilityincrease1"), nPicks);
+	else
+		sMessage = string.format(Interface.getString("char_build_message_selectabilityincrease"), nPicks);
+	end
+	wSelect.requestSelection(sTitle, sMessage, aAbilities, onAbilitySelectComplete, rAbilityAdd, nPicks);
+end
+
+function onAbilitySelectComplete(aSelection, rAbilityAdd)
 	for _,sAbility in ipairs(aSelection) do
-		local k = sAbility:lower();
-		if StringManager.contains(DataCommon.abilities, k) then
-			local sPath = "abilities." .. k .. ".score";
-			DB.setValue(nodeChar, sPath, "number", DB.getValue(nodeChar, sPath, 10) + 1);
+		addAbilityAdjustment(rAbilityAdd.nodeChar, sAbility, 1, rAbilityAdd.nAbilityMax);
+		
+		if rAbilityAdd.bSaveProfAdd then
+			local sAbilityLower = StringManager.trim(sAbility:lower());
+			if StringManager.contains(DataCommon.abilities, sAbilityLower) then
+				DB.setValue(rAbilityAdd.nodeChar, "abilities." .. sAbilityLower .. ".saveprof", "number", 1);
+				outputUserMessage("char_abilities_message_saveadd", sAbility, DB.getValue(rAbilityAdd.nodeChar, "name", ""));
+			end
+		end
+	end
+end
+
+function addAbilityAdjustment(nodeChar, sAbility, nAdj, nAbilityMax)
+	local k = sAbility:lower();
+	if StringManager.contains(DataCommon.abilities, k) then
+		local sPath = "abilities." .. k .. ".score";
+		local nCurrent = DB.getValue(nodeChar, sPath, 10);
+		local nNewScore = nCurrent + nAdj;
+		if nAbilityMax then
+			nNewScore = math.max(math.min(nNewScore, nAbilityMax), nCurrent);
+		end
+		if nNewScore ~= nCurrent then
+			DB.setValue(nodeChar, sPath, "number", nNewScore);
+			outputUserMessage("char_abilities_message_abilityadd", StringManager.capitalize(k), nNewScore - nCurrent, DB.getValue(nodeChar, "name", ""));
 		end
 	end
 end
@@ -896,10 +978,7 @@ function addProficiencyDB(nodeChar, sType, sText)
 	DB.setValue(nodeEntry, "name", "string", sValue);
 
 	-- Announce
-	local sFormat = Interface.getString("char_abilities_message_profadd");
-	local sMsg = string.format(sFormat, DB.getValue(nodeEntry, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-
+	outputUserMessage("char_abilities_message_profadd", DB.getValue(nodeEntry, "name", ""), DB.getValue(nodeChar, "name", ""));
 	return nodeEntry;
 end
 
@@ -935,10 +1014,7 @@ function addSkillDB(nodeChar, sSkill, nProficient)
 	end
 
 	-- Announce
-	local sFormat = Interface.getString("char_abilities_message_skilladd");
-	local sMsg = string.format(sFormat, DB.getValue(nodeSkill, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-	
+	outputUserMessage("char_abilities_message_skilladd", DB.getValue(nodeSkill, "name", ""), DB.getValue(nodeChar, "name", ""));
 	return nodeSkill;
 end
 
@@ -1017,7 +1093,9 @@ function addClassFeatureDB(nodeChar, sClass, sRecord, nodeClass)
 		
 		-- Add spell slot calculation info
 		if nodeClass and nFeatureLevel > 0 then
-			DB.setValue(nodeClass, "casterlevelinvmult", "number", nFeatureLevel);
+			if DB.getValue(nodeClass, "casterlevelinvmult", 0) == 0 then
+				DB.setValue(nodeClass, "casterlevelinvmult", "number", nFeatureLevel);
+			end
 		end
 
 	elseif sOriginalNameLower == FEATURE_PACT_MAGIC then
@@ -1045,13 +1123,14 @@ function addClassFeatureDB(nodeChar, sClass, sRecord, nodeClass)
 			DB.setValue(nodeNewGroup, "castertype", "string", "memorization");
 			DB.setValue(nodeNewGroup, "stat", "string", sAbility:lower());
 			DB.setValue(nodeNewGroup, "name", "string", sNewGroupName);
-
 		end
 		
 		-- Add spell slot calculation info
 		DB.setValue(nodeClass, "casterpactmagic", "number", 1);
 		if nodeClass and nFeatureLevel > 0 then
-			DB.setValue(nodeClass, "casterlevelinvmult", "number", nFeatureLevel);
+			if DB.getValue(nodeClass, "casterlevelinvmult", 0) == 0 then
+				DB.setValue(nodeClass, "casterlevelinvmult", "number", nFeatureLevel);
+			end
 		end
 	
 	elseif sOriginalNameLower == FEATURE_DRACONIC_RESILIENCE then
@@ -1066,10 +1145,7 @@ function addClassFeatureDB(nodeChar, sClass, sRecord, nodeClass)
 	end
 	
 	-- Announce
-	local sFormat = Interface.getString("char_abilities_message_featureadd");
-	local sMsg = string.format(sFormat, DB.getValue(vNew, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-	
+	outputUserMessage("char_abilities_message_featureadd", DB.getValue(vNew, "name", ""), DB.getValue(nodeChar, "name", ""));
 	return true;
 end
 
@@ -1090,8 +1166,7 @@ function addTraitDB(nodeChar, sClass, sRecord)
 		
 		if sAdjust:match("your ability scores each increase") then
 			for _,v in pairs(DataCommon.abilities) do
-				local sPath = "abilities." .. v .. ".score";
-				DB.setValue(nodeChar, sPath, "number", DB.getValue(nodeChar, sPath, 10) + 1);
+				addAbilityAdjustment(nodeChar, v, 1);
 				bApplied = true;
 			end
 		else
@@ -1101,25 +1176,22 @@ function addTraitDB(nodeChar, sClass, sRecord)
 			local a1, a2, sIncrease = sAdjust:match("your (%w+) and (%w+) scores increase by (%d+)");
 			if a1 then
 				local nIncrease = tonumber(sIncrease) or 0;
-				aIncreases[a1:lower()] = nIncrease;
-				aIncreases[a2:lower()] = nIncrease;
+				aIncreases[a1] = nIncrease;
+				aIncreases[a2] = nIncrease;
 			else
 				for a1, sIncrease in sAdjust:gmatch("your (%w+) score increases by (%d+)") do
 					local nIncrease = tonumber(sIncrease) or 0;
-					aIncreases[a1:lower()] = nIncrease;
+					aIncreases[a1] = nIncrease;
 				end
 				for a1, sDecrease in sAdjust:gmatch("your (%w+) score is reduced by (%d+)") do
 					local nDecrease = tonumber(sDecrease) or 0;
-					aIncreases[a1:lower()] = nDecrease * -1;
+					aIncreases[a1] = nDecrease * -1;
 				end
 			end
 			
 			for k,v in pairs(aIncreases) do
-				if StringManager.contains(DataCommon.abilities, k) then
-					local sPath = "abilities." .. k .. ".score";
-					DB.setValue(nodeChar, sPath, "number", DB.getValue(nodeChar, sPath, 10) + v);
-					bApplied = true;
-				end
+				addAbilityAdjustment(nodeChar, k, v);
+				bApplied = true;
 			end
 			
 			if sAdjust:match("two other ability scores of your choice increase") or 
@@ -1130,10 +1202,7 @@ function addTraitDB(nodeChar, sClass, sRecord)
 						table.insert(aAbilities, StringManager.capitalize(v));
 					end
 				end
-				local wSelect = Interface.openWindow("select_dialog", "");
-				local sTitle = Interface.getString("char_build_title_selectabilityincrease");
-				local sMessage = string.format(Interface.getString("char_build_message_selectabilityincrease"), 2);
-				wSelect.requestSelection(sTitle, sMessage, aAbilities, CharManager.onRaceAbilitySelect, nodeChar, 2);
+				onAbilitySelectDialog(nodeChar, aAbilities, 2);
 			end
 		end
 		if not bApplied then
@@ -1164,6 +1233,7 @@ function addTraitDB(nodeChar, sClass, sRecord)
 		if sWalkSpeed then
 			local nSpeed = tonumber(sWalkSpeed) or 30;
 			DB.setValue(nodeChar, "speed.base", "number", nSpeed);
+			outputUserMessage("char_abilities_message_basespeedset", nSpeed, DB.getValue(nodeChar, "name", ""));
 		end
 		
 		local aSpecial = {};
@@ -1321,10 +1391,7 @@ function addTraitDB(nodeChar, sClass, sRecord)
 	end
 	
 	-- Announce
-	local sFormat = Interface.getString("char_abilities_message_traitadd");
-	local sMsg = string.format(sFormat, DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-	
+	outputUserMessage("char_abilities_message_traitadd", DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
 	return true;
 end
 
@@ -1344,6 +1411,17 @@ function parseSkillsFromString(sSkills)
 end
 
 function pickSkills(nodeChar, aSkills, nPicks, nProf)
+	-- Check for empty or missing skill list, then use full list
+	if not aSkills then 
+		aSkills = {}; 
+	end
+	if #aSkills == 0 then
+		for k,_ in pairs(DataCommon.skilldata) do
+			table.insert(aSkills, k);
+		end
+		table.sort(aSkills);
+	end
+		
 	-- Add links (if we can find them)
 	for k,v in ipairs(aSkills) do
 		local rSkillData = DataCommon.skilldata[v];
@@ -1361,32 +1439,32 @@ function pickSkills(nodeChar, aSkills, nPicks, nProf)
 end
 
 function checkSkillProficiencies(nodeChar, sText)
+	-- Tabaxi - Cat's Talent - Volo
+	local sSkill, sSkill2 = sText:match("proficiency in the ([%w%s]+) and ([%w%s]+) skills");
+	if sSkill and sSkill2 then
+		CharManager.addSkillDB(nodeChar, sSkill, 1);
+		CharManager.addSkillDB(nodeChar, sSkill2, 1);
+		return true;
+	end
 	-- Elf - Keen Senses - PHB
 	-- Half-Orc - Menacing - PHB
 	-- Goliath - Natural Athlete - Volo
-	local sSkill = sText:match("proficiency in the (%w+) skill");
+	local sSkill = sText:match("proficiency in the ([%w%s]+) skill");
 	if sSkill then
 		CharManager.addSkillDB(nodeChar, sSkill, 1);
 		return true;
 	end
 	-- Bugbear - Sneaky - Volo
 	-- (FALSE POSITIVE) Dwarf - Stonecunning
-	sSkill = sText:match("proficient in the (%w+) skill");
+	sSkill = sText:match("proficient in the ([%w%s]+) skill");
 	if sSkill then
 		CharManager.addSkillDB(nodeChar, sSkill, 1);
 		return true;
 	end
 	-- Orc - Menacing - Volo
-	sSkill = sText:match("trained in the (%w+) skill");
+	sSkill = sText:match("trained in the ([%w%s]+) skill");
 	if sSkill then
 		CharManager.addSkillDB(nodeChar, sSkill, 1);
-		return true;
-	end
-	-- Tabaxi - Cat's Talent - Volo
-	local sSkill, sSkill2 = sText:match("proficiency in the (%w+) and (%w+) skills");
-	if sSkill and sSkill2 then
-		CharManager.addSkillDB(nodeChar, sSkill, 1);
-		CharManager.addSkillDB(nodeChar, sSkill2, 1);
 		return true;
 	end
 
@@ -1394,22 +1472,8 @@ function checkSkillProficiencies(nodeChar, sText)
 	-- Human (Variant) - Skills - PHB
 	local sPicks = sText:match("proficiency in (%w+) skills? of your choice");
 	if sPicks then
-		local aSkills = {};
-		for kSkill,_ in pairs(DataCommon.skilldata) do
-			table.insert(aSkills, kSkill);
-		end
-		table.sort(aSkills);
-		local nPicks = 0;
-		if sPicks == "one" then
-			nPicks = 1;
-		elseif sPicks == "two" then
-			nPicks = 2;
-		elseif sPicks == "three" then
-			nPicks = 3;
-		elseif sPicks == "four" then
-			nPicks = 4;
-		end
-		pickSkills(nodeChar, aSkills, nPicks);
+		local nPicks = convertSingleNumberTextToNumber(sPicks);
+		pickSkills(nodeChar, nil, nPicks);
 		return true;
 	end
 	-- Cleric - Acolyte of Nature - PHB
@@ -1421,16 +1485,7 @@ function checkSkillProficiencies(nodeChar, sText)
 	-- Lizardfolk - Hunter's Lore - Volo
 	sPicks, nMatchEnd = sText:match("proficiency with (%w+) of the following skills of your choice()")
 	if sPicks then
-		local nPicks = 0;
-		if sPicks == "one" then
-			nPicks = 1;
-		elseif sPicks == "two" then
-			nPicks = 2;
-		elseif sPicks == "three" then
-			nPicks = 3;
-		elseif sPicks == "four" then
-			nPicks = 4;
-		end
+		local nPicks = convertSingleNumberTextToNumber(sPicks);
 		pickSkills(nodeChar, parseSkillsFromString(sText:sub(nMatchEnd)), nPicks);
 		return true;
 	end
@@ -1438,16 +1493,7 @@ function checkSkillProficiencies(nodeChar, sText)
 	-- Kenku - Kenuku Training - Volo
 	sPicks, nMatchEnd = sText:match("proficient in your choice of (%w+) of the following skills()")
 	if sPicks then
-		local nPicks = 0;
-		if sPicks == "one" then
-			nPicks = 1;
-		elseif sPicks == "two" then
-			nPicks = 2;
-		elseif sPicks == "three" then
-			nPicks = 3;
-		elseif sPicks == "four" then
-			nPicks = 4;
-		end
+		local nPicks = convertSingleNumberTextToNumber(sPicks);
 		local nProf = 1;
 		if sText:match("proficiency bonus is doubled") then
 			nProf = 2;
@@ -1487,14 +1533,164 @@ function addFeatDB(nodeChar, sClass, sRecord)
 	local sNameLower = sName:lower();
 	if sNameLower == FEAT_TOUGH then
 		applyTough(nodeChar, true);
+	else
+		local sText = DB.getText(nodeSource, "text", "");
+		checkFeatAdjustments(nodeChar, sText);
+		
+		if (sNameLower == FEAT_DRAGON_HIDE) or (sNameLower == FEAT_MEDIUM_ARMOR_MASTER) then
+			calcItemArmorClass(nodeChar);
+		end
 	end
 	
 	-- Announce
-	local sFormat = Interface.getString("char_abilities_message_featadd");
-	local sMsg = string.format(sFormat, DB.getValue(vNew, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-	
+	outputUserMessage("char_abilities_message_featadd", DB.getValue(vNew, "name", ""), DB.getValue(nodeChar, "name", ""));
 	return true;
+end
+
+function checkFeatAdjustments(nodeChar, sText)
+	-- Ability increase
+	-- PHB - Actor, Durable, Heavily Armored, Heavy Armor Master, Keen Mind, Linguist
+	-- XGtE - Dwarven Fortitude, Infernal Constitution
+	local sAbility, nAdj, nAbilityMax = sText:match("[Ii]ncrease your (%w+) score by (%d+), to a maximum of (%d+)");
+	if sAbility then
+		addAbilityAdjustment(nodeChar, sAbility, tonumber(nAdj) or 0, tonumber(nAbilityMax) or 20);
+	else
+		-- PHB - Athlete, Lightly Armored, Moderately Armored, Observant, Tavern Brawler, Weapon Master
+		-- XGtE - Fade Away, Fey Teleportation, Flames of Phlegethos, Orcish Fury, Squat Nimbleness
+		local sAbility1, sAbility2, nAdj, nAbilityMax = sText:match("[Ii]ncrease your (%w+) or (%w+) score by (%d+), to a maximum of (%d+)");
+		if sAbility1 and sAbility2 then
+			onAbilitySelectDialog(nodeChar, { sAbility1, sAbility2 }, 1, nAbilityMax);
+		else
+			-- XGtE - Dragon Fear, Dragon Hide, Second Chance
+			local sAbility1, sAbility2, sAbility3, nAdj, nAbilityMax = sText:match("[Ii]ncrease your (%w+), (%w+), or (%w+) score by (%d+), to a maximum of (%d+)");
+			if sAbility1 and sAbility2 and sAbility3 then
+				onAbilitySelectDialog(nodeChar, { sAbility1, sAbility2, sAbility3 }, 1, nAbilityMax);
+			else
+				-- XGtE - Elven Accuracy
+				local sAbility1, sAbility2, sAbility3, sAbility4, nAdj, nAbilityMax = sText:match("[Ii]ncrease your (%w+), (%w+), (%w+), or (%w+) score by (%d+), to a maximum of (%d+)");
+				if sAbility1 and sAbility2 and sAbility3 and sAbility4 then
+					onAbilitySelectDialog(nodeChar, { sAbility1, sAbility2, sAbility3, sAbility4 }, 1, nAbilityMax);
+				else
+					-- PHB - Resilient
+					local nAdj, nAbilityMax = sText:match("[Ii]ncrease the chosen ability score by (%d+), to a maximum of (%d+)");
+					if nAdj and nAbilityMax then
+						onAbilitySelectDialog(nodeChar, nil, 1, nAbilityMax, true);
+					end
+				end
+			end
+		end
+	end
+	
+	-- Armor proficiency
+	-- PHB - Heavily Armored, Moderately Armored, Lightly Armored
+	local sArmorProf = sText:match("gain proficiency with (%w+) armor and shields");
+	if sArmorProf then
+		addProficiencyDB(nodeChar, "armor", StringManager.capitalize(sArmorProf) .. ", shields");
+	else
+		sArmorProf = sText:match("gain proficiency with (%w+) armor");
+		if sArmorProf then
+			addProficiencyDB(nodeChar, "armor", StringManager.capitalize(sArmorProf));
+		end
+	end
+	
+	-- Weapon proficiency
+	-- PHB - Tavern Brawler, Weapon Master
+	if sText:match("are proficient with improvised weapons") then
+		addProficiencyDB(nodeChar, "weapons", "Improvised");
+	else
+		local sWeaponProfChoices = sText:match("gain proficiency with (%w+) weapons? of your choice");
+		if sWeaponProfChoices then
+			local nWeaponProfChoices = convertSingleNumberTextToNumber(sWeaponProfChoices);
+			if nWeaponProfChoices > 0 then
+				addProficiencyDB(nodeChar, "weapons", "Choice (x" .. nWeaponProfChoices .. ")");
+			end
+		end
+	end
+	
+	-- Skill proficiency
+	-- XGtE - Prodigy
+	if sText:match("one skill proficiency of your choice") then
+		pickSkills(nodeChar, nil, 1);
+	else
+		-- XGtE - Squat Nimbleness
+		local sSkillProf, sSkillProf2 = sText:match("gain proficiency in the (%w+) or (%w+) skill");
+		if sSkillProf and sSkillProf2 then
+			pickSkills(nodeChar, { sSkillProf, sSkillProf2 }, 1);
+		else
+			-- PHB - Skilled
+			local sSkillPicks = sText:match("gain proficiency in any combination of (%w+) skills or tools");
+			local nSkillPicks = convertSingleNumberTextToNumber(sSkillPicks);
+			if nSkillPicks > 0 then
+				pickSkills(nodeChar, nil, nSkillPicks);
+			end
+		end
+	end
+	
+	-- Tool proficiency
+	-- XGtE - Prodigy
+	if sText:match("one tool proficiency of your choice") then
+		addProficiencyDB(nodeChar, "tools", "Choice");
+	end
+	
+	-- Extra language choices
+	-- PHB - Linguist
+	local sLanguagePicks = sText:match("learn (%w+) languages? of your choice");
+	if sLanguagePicks then
+		local nPicks = convertSingleNumberTextToNumber(sLanguagePicks);
+		if nPicks == 1 then
+			addLanguageDB(nodeChar, "Choice");
+		elseif nPicks > 1 then
+			addLanguageDB(nodeChar, "Choice (x" .. nPicks .. ")");
+		end
+	else
+		-- Known languages
+		-- XGtE - Fey Teleportation
+		local sLanguage = sText:match("learn to speak, read, and write (%w+)");
+		if sLanguage then
+			addLanguageDB(nodeChar, sLanguage);
+		else
+			-- Known languages
+			-- XGtE - Prodigy
+			if sText:match("fluency in one language of your choice") then
+				addLanguageDB(nodeChar, "Choice");
+			end
+		end
+	end
+	
+	-- Initiative increase
+	-- PHB - Alert
+	local sInitAdj = sText:match("gain a ([+-]?%d+) bonus to initiative");
+	if sInitAdj then
+		nInitAdj = tonumber(sInitAdj) or 0;
+		if nInitAdj ~= 0 then
+			DB.setValue(nodeChar, "initiative.misc", "number", DB.getValue(nodeChar, "initiative.misc", 0) + nInitAdj);
+			outputUserMessage("char_abilities_message_initadd", nInitAdj, DB.getValue(nodeChar, "name", ""));
+		end
+	end
+	
+	-- Passive perception increase
+	-- PHB - Observant
+	local sPassiveAdj = sText:match("have a ([+-]?%d+) bonus to your passive [Ww]isdom %([Pp]erception%)");
+	if sPassiveAdj then
+		nPassiveAdj = tonumber(sPassiveAdj) or 0;
+		if nPassiveAdj ~= 0 then
+			DB.setValue(nodeChar, "perceptionmodifier", "number", DB.getValue(nodeChar, "perceptionmodifier", 0) + nPassiveAdj);
+			outputUserMessage("char_abilities_message_passiveadd", nPassiveAdj, DB.getValue(nodeChar, "name", ""));
+		end
+	end
+	
+	-- Speed increase
+	-- PHB - Mobile
+	-- XGtE - Squat Nimbleness
+	local sSpeedAdj = sText:match("[Yy]our speed increases by (%d+) feet");
+	if not sSpeedAdj then
+		sSpeedAdj = sText:match("[Ii]ncrease your walking speed by (%d+) feet");
+	end
+	nSpeedAdj = tonumber(sSpeedAdj) or 0;
+	if nSpeedAdj > 0 then
+		DB.setValue(nodeChar, "speed.misc", "number", DB.getValue(nodeChar, "speed.misc", 0) + nSpeedAdj);
+		outputUserMessage("char_abilities_message_basespeedadj", nSpeedAdj, DB.getValue(nodeChar, "name", ""));
+	end
 end
 
 function addLanguageDB(nodeChar, sLanguage)
@@ -1518,10 +1714,7 @@ function addLanguageDB(nodeChar, sLanguage)
 	DB.setValue(vNew, "name", "string", sLanguage);
 
 	-- Announce
-	local sFormat = Interface.getString("char_abilities_message_languageadd");
-	local sMsg = string.format(sFormat, DB.getValue(vNew, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-	
+	outputUserMessage("char_abilities_message_languageadd", DB.getValue(vNew, "name", ""), DB.getValue(nodeChar, "name", ""));
 	return true;
 end
 
@@ -1532,10 +1725,8 @@ function addBackgroundRef(nodeChar, sClass, sRecord)
 	end
 
 	-- Notify
-	local sFormat = Interface.getString("char_abilities_message_backgroundadd");
-	local sMsg = string.format(sFormat, DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
-	
+	outputUserMessage("char_abilities_message_backgroundadd", DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
+
 	-- Add the name and link to the main character sheet
 	DB.setValue(nodeChar, "background", "string", DB.getValue(nodeSource, "name", ""));
 	DB.setValue(nodeChar, "backgroundlink", "windowreference", sClass, nodeSource.getNodeName());
@@ -1553,29 +1744,20 @@ function addBackgroundRef(nodeChar, sClass, sRecord)
 			sPickSkills = sPickSkills:gsub("and ", "");
 
 			sSkills = "";
-			
-			if sPicks == "one" then
-				nPicks = 1;
-			elseif sPicks == "two" then
-				nPicks = 2;
-			elseif sPicks == "three" then
-				nPicks = 3;
-			elseif sPicks == "four" then
-				nPicks = 4;
-			end
+			nPicks = convertSingleNumberTextToNumber(sPicks);
 			
 			for sSkill in string.gmatch(sPickSkills, "(%a[%a%s]+)%,?") do
 				local sTrim = StringManager.trim(sSkill);
 				table.insert(aPickSkills, sTrim);
 			end
-		elseif sSkills:match("plus one from among") then
-			local sPickSkills = sSkills:match("plus one from among (.*)");
+		elseif sSkills:match("plus %w+ from among ") then
+			local sPicks, sPickSkills = sSkills:match("plus (%w+) from among (.*)");
 			sPickSkills = sPickSkills:gsub("and ", "");
 			sPickSkills = sPickSkills:gsub(", as appropriate for your order", "");
 			
-			sSkills = sSkills:gsub("plus one from among (.*)", "");
+			sSkills = sSkills:gsub(sSkills:match("plus %w+ from among (.*)"), "");
+			nPicks = convertSingleNumberTextToNumber(sPicks);
 			
-			nPicks = 1;
 			for sSkill in string.gmatch(sPickSkills, "(%a[%a%s]+)%,?") do
 				local sTrim = StringManager.trim(sSkill);
 				if sTrim ~= "" then
@@ -1642,34 +1824,40 @@ function addRaceRef(nodeChar, sClass, sRecord)
 		aTable["class"] = sClass;
 		aTable["record"] = nodeSource;
 		
-		local aSelection = {};
-		for _,v in pairs(DB.getChildrenGlobal(nodeSource, "subraces")) do
-			local sName = DB.getValue(v, "name", "");
-			if sName ~= "" then
-				table.insert(aSelection, { text = sName, linkclass = "reference_subrace", linkrecord = v.getPath() });
+		aTable["suboptions"] = {};
+		local sRaceLower = DB.getValue(nodeSource, "name", ""):lower();
+		local aMappings = LibraryData.getMappings("race");
+		for _,vMapping in ipairs(aMappings) do
+			for _,vRace in pairs(DB.getChildrenGlobal(vMapping)) do
+				if sRaceLower == StringManager.trim(DB.getValue(vRace, "name", "")):lower() then
+					for _,vSubRace in pairs(DB.getChildren(vRace, "subraces")) do
+						table.insert(aTable["suboptions"], { text = DB.getValue(vSubRace, "name", ""), linkclass = "reference_subrace", linkrecord = vSubRace.getPath() });
+					end
+				end
 			end
 		end
 		
-		if #aSelection == 0 then
+		if #(aTable["suboptions"]) == 0 then
 			addRaceSelect(nil, aTable);
-		elseif #aSelection == 1 then
-			addRaceSelect(aSelection, aTable);
+		elseif #(aTable["suboptions"]) == 1 then
+			addRaceSelect(aTable["suboptions"], aTable);
 		else
 			-- Display dialog to choose subrace
 			local wSelect = Interface.openWindow("select_dialog", "");
 			local sTitle = Interface.getString("char_build_title_selectsubrace");
 			local sMessage = string.format(Interface.getString("char_build_message_selectsubrace"), DB.getValue(nodeSource, "name", ""), 1);
-			wSelect.requestSelection (sTitle, sMessage, aSelection, addRaceSelect, aTable);
+			wSelect.requestSelection(sTitle, sMessage, aTable["suboptions"], addRaceSelect, aTable);
 		end
 	else
+		local sSubRaceName = DB.getValue(nodeSource, "name", "");
+		
 		local aTable = {};
 		aTable["char"] = nodeChar;
 		aTable["class"] = "reference_race";
 		aTable["record"] = nodeSource.getChild("...");
+		aTable["suboptions"] = { { text = DB.getValue(nodeSource, "name", ""), linkclass = "reference_subrace", linkrecord = sRecord } };
 		
-		local aSelection = { DB.getValue(nodeSource, "name", "") };
-		
-		addRaceSelect(aSelection, aTable);
+		addRaceSelect(aTable["suboptions"], aTable);
 	end
 end
 
@@ -1677,7 +1865,7 @@ function addRaceSelect(aSelection, aTable)
 	-- If subraces available, make sure that exactly one is selected
 	if aSelection then
 		if #aSelection ~= 1 then
-			ChatManager.SystemMessage(Interface.getString("char_error_addsubrace"));
+			outputUserMessage("char_error_addsubrace");
 			return;
 		end
 	end
@@ -1702,9 +1890,7 @@ function addRaceSelect(aSelection, aTable)
 	end
 	
 	-- Notify
-	local sFormat = Interface.getString("char_abilities_message_raceadd");
-	local sMsg = string.format(sFormat, sRace, DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
+	outputUserMessage("char_abilities_message_raceadd", sRace, DB.getValue(nodeChar, "name", ""));
 	
 	-- Add the name and link to the main character sheet
 	DB.setValue(nodeChar, "race", "string", sRace);
@@ -1715,12 +1901,11 @@ function addRaceSelect(aSelection, aTable)
 	end
 	
 	if sSubRace then
-		for _,vSubRace in pairs(DB.getChildrenGlobal(nodeSource, "subraces")) do
-			if DB.getValue(vSubRace, "name", "") == sSubRace then
-				for _,v in pairs(DB.getChildren(vSubRace, "traits")) do
+		for _,vSubRace in ipairs(aTable["suboptions"]) do
+			if sSubRace == vSubRace.text then
+				for _,v in pairs(DB.getChildren(DB.getPath(vSubRace.linkrecord, "traits"))) do
 					addTraitDB(nodeChar, "reference_subracialtrait", v.getPath());
 				end
-				
 				break;
 			end
 		end
@@ -1748,9 +1933,7 @@ function addClassRef(nodeChar, sClass, sRecord)
 	end
 	
 	-- Notify
-	local sFormat = Interface.getString("char_abilities_message_classadd");
-	local sMsg = string.format(sFormat, DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
+	outputUserMessage("char_abilities_message_classadd", DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
 	
 	-- Translate Hit Die
 	local bHDFound = false;
@@ -1766,7 +1949,7 @@ function addClassRef(nodeChar, sClass, sRecord)
 		end
 	end
 	if not bHDFound then
-		ChatManager.SystemMessage(Interface.getString("char_error_addclasshd"));
+		outputUserMessage("char_error_addclasshd");
 	end
 
 	-- Keep some data handy for comparisons
@@ -1835,16 +2018,12 @@ function addClassRef(nodeChar, sClass, sRecord)
 		local nAddHP = (nHDMult * nHDSides);
 		nHP = nHP + nAddHP + nConBonus;
 
-		local sFormat = Interface.getString("char_abilities_message_hpaddmax");
-		local sMsg = string.format(sFormat, DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", "")) .. " (" .. nAddHP .. "+" .. nConBonus .. ")";
-		ChatManager.SystemMessage(sMsg);
+		outputUserMessage("char_abilities_message_hpaddmax", DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""), nAddHP+nConBonus);
 	else
 		local nAddHP = math.floor(((nHDMult * (nHDSides + 1)) / 2) + 0.5);
 		nHP = nHP + nAddHP + nConBonus;
 
-		local sFormat = Interface.getString("char_abilities_message_hpaddavg");
-		local sMsg = string.format(sFormat, DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", "")) .. " (" .. nAddHP .. "+" .. nConBonus .. ")";
-		ChatManager.SystemMessage(sMsg);
+		outputUserMessage("char_abilities_message_hpaddavg", DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""), nAddHP+nConBonus);
 	end
 	DB.setValue(nodeChar, "hp.total", "number", nHP);
 
@@ -1905,7 +2084,7 @@ function addClassFeatureHelper(aSelection, rClassAdd)
 	-- Check to see if we added specialization
 	if aSelection then
 		if #aSelection ~= 1 then
-			ChatManager.SystemMessage(Interface.getString("char_error_addclassspecialization"));
+			outputUserMessage("char_error_addclassspecialization");
 			return;
 		end
 		
@@ -2130,20 +2309,21 @@ function addAdventureDB(nodeChar, sClass, sRecord)
 	DB.setValue(vNew, "locked", "number", 1);
 	
 	-- Notify
-	local sFormat = Interface.getString("char_logs_message_adventureadd");
-	local sMsg = string.format(sFormat, DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
-	ChatManager.SystemMessage(sMsg);
+	outputUserMessage("char_logs_message_adventureadd", DB.getValue(nodeSource, "name", ""), DB.getValue(nodeChar, "name", ""));
 end
 
 function hasTrait(nodeChar, sTrait)
-	local sTraitLower = sTrait:lower();
+	return (getTraitRecord(nodeChar, sTrait) ~= nil);
+end
+
+function getTraitRecord(nodeChar, sTrait)
+	local sTraitLower = StringManager.trim(sTrait):lower();
 	for _,v in pairs(DB.getChildren(nodeChar, "traitlist")) do
-		if DB.getValue(v, "name", ""):lower() == sTraitLower then
-			return true;
+		if StringManager.trim(DB.getValue(v, "name", "")):lower() == sTraitLower then
+			return v;
 		end
 	end
-	
-	return false;
+	return nil;
 end
 
 function hasFeature(nodeChar, sFeature)
@@ -2158,14 +2338,20 @@ function hasFeature(nodeChar, sFeature)
 end
 
 function hasFeat(nodeChar, sFeat)
+	return (getFeatRecord(nodeChar, sFeat) ~= nil);
+end
+
+function getFeatRecord(nodeChar, sFeat)
+	if not sFeat then
+		return nil;
+	end
 	local sFeatLower = sFeat:lower();
 	for _,v in pairs(DB.getChildren(nodeChar, "featlist")) do
 		if DB.getValue(v, "name", ""):lower() == sFeatLower then
-			return true;
+			return v;
 		end
 	end
-	
-	return false;
+	return nil;
 end
 
 function applyDwarvenToughness(nodeChar, bInitialAdd)
@@ -2185,9 +2371,7 @@ function applyDwarvenToughness(nodeChar, bInitialAdd)
 	nHP = nHP + nAddHP;
 	DB.setValue(nodeChar, "hp.total", "number", nHP);
 	
-	local sFormat = Interface.getString("char_abilities_message_hpaddtrait");
-	local sMsg = string.format(sFormat, StringManager.capitalizeAll(TRAIT_DWARVEN_TOUGHNESS), DB.getValue(nodeChar, "name", "")) .. " (" .. nAddHP .. ")";
-	ChatManager.SystemMessage(sMsg);
+	outputUserMessage("char_abilities_message_hpaddtrait", StringManager.capitalizeAll(TRAIT_DWARVEN_TOUGHNESS), DB.getValue(nodeChar, "name", ""), nAddHP);
 end
 
 function applyDraconicResilience(nodeChar, bInitialAdd)
@@ -2197,9 +2381,7 @@ function applyDraconicResilience(nodeChar, bInitialAdd)
 	nHP = nHP + nAddHP;
 	DB.setValue(nodeChar, "hp.total", "number", nHP);
 	
-	local sFormat = Interface.getString("char_abilities_message_hpaddfeature");
-	local sMsg = string.format(sFormat, StringManager.capitalizeAll(FEATURE_DRACONIC_RESILIENCE), DB.getValue(nodeChar, "name", "")) .. " (" .. nAddHP .. ")";
-	ChatManager.SystemMessage(sMsg);
+	outputUserMessage("char_abilities_message_hpaddfeature", StringManager.capitalizeAll(FEATURE_DRACONIC_RESILIENCE), DB.getValue(nodeChar, "name", ""), nAddHP);
 		
 	if bInitialAdd then
 		-- Add armor (if wearing none)
@@ -2240,7 +2422,20 @@ function applyTough(nodeChar, bInitialAdd)
 	nHP = nHP + nAddHP;
 	DB.setValue(nodeChar, "hp.total", "number", nHP);
 	
-	local sFormat = Interface.getString("char_abilities_message_hpaddfeat");
-	local sMsg = string.format(sFormat, StringManager.capitalizeAll(FEAT_TOUGH), DB.getValue(nodeChar, "name", "")) .. " (" .. nAddHP .. ")";
-	ChatManager.SystemMessage(sMsg);
+	outputUserMessage("char_abilities_message_hpaddfeat", StringManager.capitalizeAll(FEAT_TOUGH), DB.getValue(nodeChar, "name", ""), nAddHP);
+end
+
+function convertSingleNumberTextToNumber(s)
+	if s then
+		if s == "one" then return 1; end
+		if s == "two" then return 2; end
+		if s == "three" then return 3; end
+		if s == "four" then return 4; end
+		if s == "five" then return 5; end
+		if s == "six" then return 6; end
+		if s == "seven" then return 7; end
+		if s == "eight" then return 8; end
+		if s == "nine" then return 9; end
+	end
+	return 0;
 end
