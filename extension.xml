@@ -12,7 +12,7 @@
 	<properties>
 		<name>5E Add-on - Sanity and Honor</name>
 		<version>1.1.0</version>
-		<description>Adds Sanity and Honor ability - 30 September 2018</description>
+		<description>Adds Sanity and Honor ability - 03 October 2018</description>
 	
 	<ruleset>
 		<name>5E</name>
@@ -26,25 +26,14 @@
 	
 	<!-- Strings -->
 	<includefile source="strings/strings_5e.xml" />
-
-	<!-- Desktop -->
-	<script name="Desktop5E" file="scripts/data_desktop_5E.lua" />
-	<script name="LibraryData5E" file="scripts/data_library_5E.lua" />
-	<script name="Options5E" file="scripts/data_options_5E.lua" />
-	<includefile source="desktop/desktop_local.xml" />
 	
 	<!-- Campaign Records -->
-	<includefile source="campaign/template_power.xml" />
-	<includefile source="campaign/template_char.xml" />
 	<includefile source="campaign/record_char_main.xml" />
 	<script name="CharManager" file="campaign/scripts/manager_char.lua" />
 	<includefile source="campaign/record_npc.xml" />
 		
 	<!-- Party sheet -->
-	<includefile source="ps/template_ps.xml" />
-	<includefile source="ps/ps.xml" />
 	<includefile source="ps/ps_main.xml" />
-	<includefile source="ps/ps_xp.xml" />
 	<script name="PartyManager2" file="ps/scripts/manager_ps2.lua" />
 
 	<!-- High-level scripts -->
