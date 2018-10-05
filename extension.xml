@@ -11,8 +11,8 @@
 	<!-- Attributes -->
 	<properties>
 		<name>5E Add-on - Sanity and Honor</name>
-		<version>1.1.0</version>
-		<description>Adds Sanity and Honor ability - 03 October 2018</description>
+		<version>1.2.0</version>
+		<description>Adds Sanity and Honor ability - 04 October 2018</description>
 	
 	<ruleset>
 		<name>5E</name>
@@ -29,8 +29,8 @@
 	
 	<!-- Campaign Records -->
 	<includefile source="campaign/record_char_main.xml" />
-	<script name="CharManager" file="campaign/scripts/manager_char.lua" />
 	<includefile source="campaign/record_npc.xml" />
+	<script name="CharManager" file="campaign/scripts/manager_char.lua" />
 		
 	<!-- Party sheet -->
 	<includefile source="ps/ps_main.xml" />
@@ -38,29 +38,9 @@
 
 	<!-- High-level scripts -->
 	<script name="DataCommon" file="scripts/data_common.lua" />
-	<script name="GameSystem" file="scripts/manager_gamesystem.lua" />
-	<script name="CampaignDataManager2" file="scripts/manager_campaigndata2.lua" />
 	<script name="DataSpell" file="scripts/data_spell.lua" />
-	<script name="CharacterListManager_Inspiration" file="scripts/manager_charlist_inspiration.lua" />
 	<script name="ActorManager2" file="scripts/manager_actor2.lua" />
-	<script name="CombatManager2" file="scripts/manager_combat2.lua" />
 	<script name="EffectManager5E" file="scripts/manager_effect_5E.lua" />
-	<script name="ItemManager2" file="scripts/manager_item2.lua" />
-	<script name="PowerManager" file="scripts/manager_power.lua" />
-	<script name="TokenManager2" file="scripts/manager_token2.lua" />
-	<script name="VersionManager2" file="scripts/manager_version2.lua" />
-	<script name="ActionsManager2" file="scripts/manager_actions2.lua" />
-	<script name="ActionGeneral" file="scripts/manager_action_general.lua" />
-	<script name="ActionAttack" file="scripts/manager_action_attack.lua" />
-	<script name="ActionCheck" file="scripts/manager_action_check.lua" />
-	<script name="ActionDamage" file="scripts/manager_action_damage.lua" />
-	<script name="ActionHeal" file="scripts/manager_action_heal.lua" />
-	<script name="ActionInit" file="scripts/manager_action_init.lua" />
-	<script name="ActionPower" file="scripts/manager_action_power.lua" />
-	<script name="ActionRecharge" file="scripts/manager_action_recharge.lua" />
-	<script name="ActionRecovery" file="scripts/manager_action_recovery.lua" />
-	<script name="ActionSave" file="scripts/manager_action_save.lua" />
-	<script name="ActionSkill" file="scripts/manager_action_skill.lua" />
 	
 	<!-- icon -->
 	<icon name="DDlogo_5E" file="graphics/icons/DD_5E.png" />
