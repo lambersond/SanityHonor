@@ -65,8 +65,8 @@ function linkPCFields(nodePS)
 	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.intelligence.bonus", "number", "intbonus");
 	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.wisdom.bonus", "number", "wisbonus");
 	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.charisma.bonus", "number", "chabonus");
-	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.sanity.bonus", "number", "sanbonus")
-	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.honor.bonus", "number", "honbonus")
+	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.sanity.bonus", "number", "sanbonus");
+	PartyManager.linkRecordField(nodeChar, nodePS, "abilities.honor.bonus", "number", "honbonus");
 
 	PartyManager.linkRecordField(nodeChar, nodePS, "defenses.ac.total", "number", "ac");
 	PartyManager.linkRecordField(nodeChar, nodePS, "defenses.special", "string", "specialdefense");
