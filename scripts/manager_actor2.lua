@@ -467,6 +467,22 @@ function getDefenseValue(rAttacker, rDefender, rRoll)
 		end
 		
 		nBonusStat = getAbilityEffectsBonus(rDefender, sDefenseStat);
+		if sDefenderType == "pc" and (nBonusStat > 0) then
+			local sMaxDexBonus = DB.getValue(nodeDefender, "defenses.ac.dexbonus", "");
+			if sMaxDexBonus == "no" then
+				nBonusStat = 0;
+			elseif sMaxDexBonus == "max2" then
+				local nMaxEffectStatModBonus = math.max(2 - nDefenseStatMod, 0);
+				if nBonusStat > nMaxEffectStatModBonus then 
+					nBonusStat = nMaxEffectStatModBonus; 
+				end
+			elseif sMaxDexBonus == "max3" then
+				local nMaxEffectStatModBonus = math.max(3 - nDefenseStatMod, 0);
+				if nBonusStat > nMaxEffectStatModBonus then 
+					nBonusStat = nMaxEffectStatModBonus; 
+				end
+			end
+		end
 		
 		local bProne = false;
 		if EffectManager5E.hasEffect(rAttacker, "ADVATK", rDefender, true) then
