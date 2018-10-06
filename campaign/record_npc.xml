@@ -6,61 +6,6 @@
 -->
 
 <root>
-	<windowclass name="npc">
-		<frame>recordsheet</frame>
-		<placement>
-			<size width="460" height="550" />
-		</placement>
-		<sizelimits>
-			<minimum width="460" height="400" />
-			<dynamic />
-		</sizelimits>
-		<minimize>minimized_npc</minimize>
-		<tooltip field="name" />
-		<nodelete />
-		<script file="campaign/scripts/npc.lua" />
-		<sheetdata>
-			<sub_record_header name="header">
-				<class>npc_header</class>
-			</sub_record_header>
-
-			<frame_record_content_tabbed name="contentframe" />
-
-			<subwindow_record name="main_creature">
-				<class>npc_combat</class>
-			</subwindow_record>
-			<ft_record name="text">
-				<anchored to="contentframe" position="over" />
-				<invisible />
-			</ft_record>
-
-			<scrollbar_record>
-				<target>main_creature</target>
-			</scrollbar_record>
-			<scrollbar_record>
-				<target>text</target>
-			</scrollbar_record>
-
-			<tabs_recordsheet>
-				<tab>
-					<icon>tab_main</icon>
-					<subwindow>main_creature</subwindow>
-				</tab>
-				<tab>
-					<icon>tab_other</icon>
-					<subwindow>text</subwindow>
-				</tab>
-			</tabs_recordsheet>
-			
-			<resize_recordsheet />
-			<close_recordsheet />
-		</sheetdata>
-	</windowclass>
-
-	<windowclass name="npc_header" merge="join">
-		<margins control="0,0,0,2" />
-	</windowclass>
-	
 	<windowclass name="npc_combat">
 		<margins control="0,0,0,2" />
 		<script file="campaign/scripts/npc_main.lua" />
@@ -135,7 +80,7 @@
 			<number_npc_abilityscore name="strength" source="abilities.strength.score">
 				<anchored merge="replace" width="40" height="30">
 					<top parent="columnanchor" anchor="bottom" relation="relative" offset="12" />
-					<left anchor="center" offset="-202" />
+					<left anchor="left" offset="4" />
 				</anchored>
 				<target>strength</target>
 			</number_npc_abilityscore>
@@ -526,42 +471,6 @@
 				<datasource>.spells</datasource>
 				<class>npc_power</class>
 			</list_npcactions>
-		</sheetdata>
-	</windowclass>
-
-	<windowclass name="npc_power">
-		<margins control="0,0,0,2" />
-		<sheetdata>
-			<genericcontrol name="rightanchor">
-				<anchored height="0" width="0">
-					<top />
-					<right />
-				</anchored>
-			</genericcontrol>
-			<button_idelete name="idelete">
-				<anchored>
-					<top offset="2" />
-					<right parent="rightanchor" anchor="left" relation="relative" offset="-5" />
-				</anchored>
-			</button_idelete>
-
-			<stringfield name="name">
-				<anchored position="insidetopleft" offset="5,2">
-					<right parent="rightanchor" anchor="left" relation="relative" offset="-5" />
-				</anchored>
-				<frame name="rowshade" offset="5,2,5,2" />
-				<font>sheetlabel</font>
-				<multilinespacing>20</multilinespacing>
-				<empty textres="npc_empty_powername" />
-			</stringfield>
-			
-			<basicstring name="desc">
-				<anchored to="name" position="belowleft" offset="0,5">
-					<right parent="" offset="-5" />
-				</anchored>
-				<multilinespacing>20</multilinespacing>
-				<script file="campaign/scripts/string_powerdesc.lua" />
-			</basicstring>
 		</sheetdata>
 	</windowclass>
 </root>
