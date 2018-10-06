@@ -31,7 +31,7 @@ function updateControl(sControl, bReadOnly, bForceHide)
 	if not self[sControl] then
 		return false;
 	end
-		
+	
 	return self[sControl].update(bReadOnly, bForceHide);
 end
 
@@ -39,15 +39,15 @@ function update()
 	local nodeRecord = getDatabaseNode();
 	local bReadOnly = WindowManager.getReadOnlyState(nodeRecord);
 	local bID = LibraryData.getIDState("npc", nodeRecord);
-
+	
 	local bSection1 = false;
 	if User.isHost() then
 		if updateControl("nonid_name", bReadOnly) then bSection1 = true; end;
 	else
 		updateControl("nonid_name", bReadOnly, true);
 	end
-	divider.setVisible(bSection1);
-
+	-- divider.setVisible(bSection1);
+	
 	updateControl("size", bReadOnly, bReadOnly);
 	updateControl("type", bReadOnly, bReadOnly);
 	updateControl("alignment", bReadOnly, bReadOnly);
