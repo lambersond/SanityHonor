@@ -11,7 +11,7 @@
 	<!-- Attributes -->
 	<properties>
 		<name>5E Add-on - Sanity and Honor</name>
-		<version>1.2.2</version>
+		<version>1.2.3</version>
 		<description>Adds Sanity and Honor ability - 06 October 2018</description>
 	
 	<ruleset>
@@ -30,7 +30,6 @@
 	<!-- Campaign Records -->
 	<includefile source="campaign/record_char_main.xml" />
 	<includefile source="campaign/record_npc.xml" />
-	<script name="CharManager" file="campaign/scripts/manager_char.lua" />
 		
 	<!-- Party sheet -->
 	<includefile source="ps/ps_main.xml" />
