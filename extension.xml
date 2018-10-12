@@ -11,13 +11,8 @@
 	<!-- Attributes -->
 	<properties>
 		<name>5E Add-on - Sanity and Honor</name>
-<<<<<<< HEAD
 		<version>1.2.3</version>
-		<description>Adds Sanity and Honor ability - 06 October 2018</description>
-=======
-		<version>1.2.2</version>
 		<description>Adds Sanity and Honor ability</description>
->>>>>>> 816efcdc654d58e474e6dd099432540c92a5eb15
 	
 	<ruleset>
 		<name>5E</name>
