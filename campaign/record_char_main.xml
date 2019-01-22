@@ -53,22 +53,6 @@
 				<anchored to="honorsave" />
 				<static textres="HON" />
 			</label_chardefense>
-
-			<subwindow name="sensescombat">
-				<anchored>
-					<top offset="110" />
-					<left offset="90" />
-					<right offset="-95" />
-					<bottom offset="-130" />
-				</anchored>
-				<class>charsheet_sensescombat</class>
-				<activate />
-				<fastinit />
-			</subwindow>
-			<scrollbar>
-				<anchored to="sensescombat" offset="-5,-10" />
-				<target>sensescombat</target>
-			</scrollbar>
 		</sheetdata>
 	</windowclass>
 </root>

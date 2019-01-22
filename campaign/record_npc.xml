@@ -6,6 +6,15 @@
 -->
 
 <root>
+	<windowclass name="npc" merge="join">
+		<placement>
+			<size width="600" height="550" />
+		</placement>
+		<sizelimits>
+			<minimum width="600" height="400" />
+			<dynamic />
+		</sizelimits>
+	</windowclass>
 	<windowclass name="npc_combat" merge="join">
 		<script file="campaign/scripts/npc_main.lua" />
 		<sheetdata merge="join">
